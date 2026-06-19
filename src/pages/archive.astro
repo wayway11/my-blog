@@ -1,0 +1,93 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const allPosts = await getCollection('blog');
+const posts = allPosts
+  .filter(p => !p.data.draft)
+  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+
+type Group = { year: number; month: number; posts: typeof posts };
+const groups: Group[] = [];
+for (const post of posts) {
+  const year = post.data.date.getFullYear();
+  const month = post.data.date.getMonth() + 1;
+  let group = groups.find(g => g.year === year && g.month === month);
+  if (!group) {
+    group = { year, month, posts: [] };
+    groups.push(group);
+  }
+  group.posts.push(post);
+}
+---
+
+<BaseLayout title="归档 - 我的博客">
+  <h1>归档</h1>
+  {
+    groups.length === 0 ? (
+      <p class="empty-text">暂无文章</p>
+    ) : (
+      groups.map(group => (
+        <section class="archive-group">
+          <h2>{group.year} 年 {group.month} 月</h2>
+          <ul>
+            {group.posts.map(post => (
+              <li>
+                <time>{post.data.date.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })}</time>
+                <a href={`/posts/${post.id}`}>{post.data.title}</a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    )
+  }
+</BaseLayout>
+
+<style>
+  h1 {
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .archive-group {
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .archive-group h2 {
+    font-size: 1.125rem;
+    color: var(--color-text-secondary);
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: var(--spacing-sm);
+    margin: 0 0 var(--spacing-sm) 0;
+  }
+
+  .archive-group ul {
+    list-style: none;
+  }
+
+  .archive-group li {
+    display: flex;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-xs) 0;
+    align-items: baseline;
+  }
+
+  .archive-group time {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    min-width: 5em;
+  }
+
+  .archive-group a {
+    color: var(--color-text);
+  }
+
+  .archive-group a:hover {
+    color: var(--color-accent);
+  }
+
+  .empty-text {
+    color: var(--color-text-secondary);
+  }
+</style>

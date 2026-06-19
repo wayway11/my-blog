@@ -1,0 +1,84 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  return posts
+    .filter(p => !p.data.draft)
+    .map(p => ({ params: { slug: p.id } }));
+}
+
+const { slug } = Astro.params;
+const posts = await getCollection('blog');
+const post = posts.find(p => p.id === slug);
+
+if (!post) {
+  return Astro.redirect('/404');
+}
+
+const { Content } = await render(post);
+---
+
+<BaseLayout title={`${post.data.title} - 我的博客`} description={post.data.summary}>
+  <article class="post">
+    <header class="post-header">
+      <h1>{post.data.title}</h1>
+      <time>{post.data.date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}</time>
+      <div class="tags">
+        {post.data.tags.map(tag => (
+          <a href={`/tags/${tag}`} class="tag">{tag}</a>
+        ))}
+      </div>
+    </header>
+    <div class="prose">
+      <Content />
+    </div>
+    <footer class="post-footer">
+      <a href="/">&larr; 返回首页</a>
+    </footer>
+  </article>
+</BaseLayout>
+
+<style>
+  .post-header {
+    margin-bottom: var(--spacing-2xl);
+  }
+
+  .post-header h1 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .post-header time {
+    display: block;
+    color: var(--color-text-secondary);
+    font-size: 0.9375rem;
+    margin-bottom: var(--spacing-md);
+  }
+
+  .post-header .tags {
+    display: flex;
+    gap: var(--spacing-sm);
+  }
+
+  .tag {
+    display: inline-block;
+    background: var(--color-tag-bg);
+    color: var(--color-tag-text);
+    padding: 0.125em 0.625em;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+  }
+
+  .tag:hover {
+    text-decoration: none;
+    filter: brightness(0.95);
+  }
+
+  .post-footer {
+    margin-top: var(--spacing-2xl);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--color-border);
+  }
+</style>

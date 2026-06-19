@@ -1,0 +1,73 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const allPosts = await getCollection('blog');
+const publishedPosts = allPosts.filter(p => !p.data.draft);
+
+const tagCounts = new Map<string, number>();
+for (const post of publishedPosts) {
+  for (const tag of post.data.tags) {
+    tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+  }
+}
+const tags = [...tagCounts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+---
+
+<BaseLayout title="标签 - 我的博客">
+  <h1>标签</h1>
+  {
+    tags.length === 0 ? (
+      <p class="empty-text">暂无标签</p>
+    ) : (
+      <div class="tag-cloud">
+        {tags.map(([tag, count]) => (
+          <a href={`/tags/${tag}`} class="tag-item">
+            {tag} <span class="count">{count}</span>
+          </a>
+        ))}
+      </div>
+    )
+  }
+</BaseLayout>
+
+<style>
+  h1 {
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+
+  .tag-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    background: var(--color-tag-bg);
+    color: var(--color-tag-text);
+    padding: 0.375em 0.875em;
+    border-radius: 999px;
+    font-size: 0.9375rem;
+  }
+
+  .tag-item:hover {
+    text-decoration: none;
+    filter: brightness(0.9);
+  }
+
+  .count {
+    background: var(--color-accent);
+    color: white;
+    padding: 0.0625em 0.4375em;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .empty-text {
+    color: var(--color-text-secondary);
+  }
+</style>

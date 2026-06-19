@@ -1,0 +1,17 @@
+{
+  "name": "vibe-personal-blogs",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.9",
+    "@astrojs/vercel": "^10.0.8",
+    "astro": "^6.4.8",
+    "typescript": "^6.0.3"
+  }
+}

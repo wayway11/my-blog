@@ -1,0 +1,90 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  const publishedPosts = posts.filter(p => !p.data.draft);
+  const tagSet = new Set<string>();
+  for (const post of publishedPosts) {
+    for (const tag of post.data.tags) {
+      tagSet.add(tag);
+    }
+  }
+  return [...tagSet].map(tag => ({ params: { tag } }));
+}
+
+const { tag } = Astro.params;
+const allPosts = await getCollection('blog');
+const posts = allPosts
+  .filter(p => !p.data.draft && p.data.tags.includes(tag!))
+  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+---
+
+<BaseLayout title={`标签: ${tag} - 我的博客`}>
+  <h1>标签: {tag}</h1>
+  <p class="count-text">{posts.length} 篇文章</p>
+  {
+    posts.length === 0 ? (
+      <p class="empty-text">该标签下暂无文章</p>
+    ) : (
+      <div class="post-list">
+        {posts.map(post => (
+          <article class="post-card">
+            <time>{post.data.date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}</time>
+            <h2><a href={`/posts/${post.id}`}>{post.data.title}</a></h2>
+            {post.data.summary && <p class="summary">{post.data.summary}</p>}
+          </article>
+        ))}
+      </div>
+    )
+  }
+</BaseLayout>
+
+<style>
+  h1 {
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .count-text {
+    color: var(--color-text-secondary);
+    font-size: 0.9375rem;
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .post-card {
+    padding: var(--spacing-lg) 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .post-card:last-child {
+    border-bottom: none;
+  }
+
+  .post-card time {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+  }
+
+  .post-card h2 {
+    margin: var(--spacing-xs) 0;
+    font-size: 1.375rem;
+  }
+
+  .post-card h2 a {
+    color: var(--color-text);
+  }
+
+  .post-card h2 a:hover {
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .summary {
+    color: var(--color-text-secondary);
+  }
+
+  .empty-text {
+    color: var(--color-text-secondary);
+  }
+</style>
