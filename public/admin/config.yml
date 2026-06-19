@@ -15,7 +15,7 @@ collections:
     folder: src/content/blog
     create: true
     slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
-    format: yml-frontmatter
+    format: yaml-frontmatter
     fields:
       - label: 标题
         name: title
@@ -23,8 +23,9 @@ collections:
       - label: 日期
         name: date
         widget: datetime
-        date_format: true
+        date_format: YYYY-MM-DD
         time_format: false
+        format: YYYY-MM-DD
       - label: 标签
         name: tags
         widget: list
@@ -42,7 +43,3 @@ collections:
         widget: markdown
 
 locale: zh_Hans
-
-slug:
-  encoding: ascii
-  clean_accents: true
