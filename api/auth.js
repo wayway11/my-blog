@@ -1,4 +1,5 @@
 const REDIRECT_URI = 'https://my-blog-steel-ten.vercel.app/api/auth';
+const SITE_ORIGIN = 'https://my-blog-steel-ten.vercel.app';
 
 export default async function handler(req, res) {
   const url = new URL(req.url, `https://${req.headers.host}`);
@@ -6,22 +7,16 @@ export default async function handler(req, res) {
 
   if (code) {
     try {
-      const tokenRes = await fetch(
-        'https://github.com/login/oauth/access_token',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({
-            client_id: process.env.OAUTH_CLIENT_ID,
-            client_secret: process.env.OAUTH_CLIENT_SECRET,
-            code,
-            redirect_uri: REDIRECT_URI,
-          }),
-        }
-      );
+      const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          client_id: process.env.OAUTH_CLIENT_ID,
+          client_secret: process.env.OAUTH_CLIENT_SECRET,
+          code,
+          redirect_uri: REDIRECT_URI,
+        }),
+      });
       const data = await tokenRes.json();
 
       if (data.error) {
@@ -34,10 +29,37 @@ export default async function handler(req, res) {
       res.end(`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>登录成功</title></head>
 <body style="font-family:sans-serif;padding:40px;text-align:center">
-  <p>登录成功 &#x2705;</p>
+  <p>登录成功</p>
+  <p id="status">正在跳转...</p>
   <script>
-    window.opener.postMessage('authorization:github:success:${data.access_token}', '*');
-    setTimeout(function(){try{window.close()}catch(e){}}, 800);
+    var token = '${data.access_token}';
+    var origin = '${SITE_ORIGIN}';
+    var sent = false;
+
+    // Try postMessage
+    try {
+      if (window.opener && window.opener !== window) {
+        window.opener.postMessage('authorization:github:success:' + token, origin);
+        sent = true;
+      }
+    } catch(e) {
+      document.getElementById('status').textContent = '弹窗通信失败: ' + e.message;
+    }
+
+    // Backup: save to localStorage then close
+    try {
+      localStorage.setItem('decap-cms-github-token', token);
+    } catch(e) {}
+
+    setTimeout(function() {
+      if (sent) {
+        try { window.close(); } catch(e) {}
+      }
+      // If not in a popup, redirect to admin
+      if (!window.opener || window.opener === window) {
+        window.location.href = '/admin/';
+      }
+    }, 1500);
   </script>
 </body></html>`);
     } catch (err) {
@@ -53,12 +75,12 @@ export default async function handler(req, res) {
     return res.end('OAUTH_CLIENT_ID not set');
   }
 
-  res.writeHead(302, {
-    Location:
-      `https://github.com/login/oauth/authorize` +
-      `?client_id=${clientId}` +
-      `&scope=repo,user` +
-      `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`,
-  });
+  const authUrl =
+    `https://github.com/login/oauth/authorize` +
+    `?client_id=${clientId}` +
+    `&scope=repo,user` +
+    `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+
+  res.writeHead(302, { Location: authUrl });
   res.end();
 }
