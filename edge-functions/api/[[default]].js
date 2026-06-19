@@ -31,6 +31,14 @@ export default async function onRequest(context) {
   const branch = url.searchParams.get('branch') || DEFAULT_BRANCH;
 
   try {
+    // /api/auth — Decap CMS auth (GET: check, POST: login)
+    if (url.pathname.endsWith('/auth')) {
+      return jsonResponse({
+        user: { login: 'admin', email: 'admin@blog.local', avatar_url: '' },
+        token: token,
+      });
+    }
+
     // GET /api/entries
     if (method === 'GET' && url.pathname.endsWith('/entries')) {
       const entries = await listEntries(token, path, branch);
