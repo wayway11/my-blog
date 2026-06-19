@@ -300,7 +300,9 @@ export default {
       }
     }
 
-    return new Response(JSON.stringify({ message: 'API gateway ready' }), {
+    // 404 fallback
+    return new Response(JSON.stringify({ error: 'Not found' }), {
+      status: 404,
       headers: { 'Content-Type': 'application/json' }
     });
   }

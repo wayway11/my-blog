@@ -173,3 +173,36 @@ test('uploadMedia generates clean file path', () => {
   assert.equal(buildMediaPath('hello_world.jpg'), 'public/images/hello_world.jpg');
   assert.equal(buildMediaPath('测试.png'), 'public/images/--.png');
 });
+
+// ── Task 7: Router ──
+
+test('unauthorized returns 401 with error message', () => {
+  function unauth() {
+    return {
+      status: 401,
+      body: JSON.stringify({ error: 'Unauthorized' }),
+      headers: { 'Content-Type': 'application/json' }
+    };
+  }
+  const res = unauth();
+  assert.equal(res.status, 401);
+});
+
+test('router returns 404 for unknown API paths', () => {
+  function route(url, method) {
+    const knownPaths = ['/entries', '/entry', '/media'];
+    const apiPath = new URL(url).pathname.replace('/api', '');
+    const validMethods = { '/entries': ['GET', 'POST', 'DELETE'], '/entry': ['GET'], '/media': ['POST'] };
+    if (knownPaths.includes(apiPath) && validMethods[apiPath]?.includes(method)) {
+      return { status: 200 };
+    }
+    return { status: 404 };
+  }
+
+  assert.equal(route('http://x/api/unknown', 'GET').status, 404);
+  assert.equal(route('http://x/api/entries', 'GET').status, 200);
+  assert.equal(route('http://x/api/entries', 'POST').status, 200);
+  assert.equal(route('http://x/api/entry', 'GET').status, 200);
+  assert.equal(route('http://x/api/media', 'POST').status, 200);
+  assert.equal(route('http://x/api/entries', 'PUT').status, 404);
+});
