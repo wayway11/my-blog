@@ -10,6 +10,25 @@
   <script>window.CMS_MANUAL_INIT = true</script>
   <script src="https://unpkg.com/decap-cms@3.11.0/dist/decap-cms.js"></script>
   <script>
+    // Check for saved token (from previous OAuth popup)
+    var token = localStorage.getItem('decap-cms-github-token');
+
+    if (token) {
+      // Inject user data into CMS expected format so it skips login
+      var user = {
+        name: 'github',
+        token: token,
+        backendName: 'github',
+        email: '',
+        login: '',
+        avatar_url: '',
+        url: '',
+      };
+      localStorage.setItem('decap-cms-user', JSON.stringify(user));
+      // Clear the temp token
+      localStorage.removeItem('decap-cms-github-token');
+    }
+
     CMS.init({
       config: {
         backend: {
