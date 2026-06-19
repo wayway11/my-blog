@@ -26,43 +26,20 @@ export default async function handler(req, res) {
 
       if (data.error) {
         res.writeHead(400, { 'Content-Type': 'text/html' });
-        return res.end(
-          `<html><body style="font-family:sans-serif;padding:40px;text-align:center">
-            <h2>登录失败</h2>
-            <p>${data.error_description || data.error}</p>
-            <p>请关闭此窗口重试。</p>
-          </body></html>`
-        );
+        return res.end(`<html><body style="font-family:sans-serif;padding:40px;text-align:center">
+          <h2>登录失败</h2><p>${data.error_description || data.error}</p></body></html>`);
       }
 
       res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(`
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>登录成功</title></head>
+      res.end(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>登录成功</title></head>
 <body style="font-family:sans-serif;padding:40px;text-align:center">
-  <p>登录成功 ✅</p>
-  <p>此窗口即将关闭...</p>
+  <p>登录成功 &#x2705;</p>
   <script>
-    (function() {
-      var data = { token: ${JSON.stringify(data.access_token)}, provider: 'github' };
-      // Send token to parent Decap CMS window
-      window.opener.postMessage(data, '*');
-      // Also try the structured format for compatibility
-      window.opener.postMessage(
-        'authorization:github:success:' + JSON.stringify(data),
-        '*'
-      );
-      // Close popup after short delay
-      setTimeout(function() { window.close(); }, 1000);
-      // If not a popup, redirect to admin
-      setTimeout(function() {
-        document.body.innerHTML = '<p>登录成功！<a href="/admin/">进入后台</a></p>';
-      }, 1500);
-    })();
+    window.opener.postMessage('authorization:github:success:${data.access_token}', '*');
+    setTimeout(function(){try{window.close()}catch(e){}}, 800);
   </script>
-</body></html>
-      `);
+</body></html>`);
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'text/plain' });
       res.end('OAuth exchange failed: ' + err.message);
@@ -72,16 +49,16 @@ export default async function handler(req, res) {
 
   const clientId = process.env.OAUTH_CLIENT_ID;
   if (!clientId) {
-    res.writeHead(500, { 'Content-Type': 'text/plain' });
-    return res.end('OAUTH_CLIENT_ID not set in environment variables');
+    res.writeHead(500);
+    return res.end('OAUTH_CLIENT_ID not set');
   }
 
-  const authUrl =
-    `https://github.com/login/oauth/authorize` +
-    `?client_id=${clientId}` +
-    `&scope=repo,user` +
-    `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
-
-  res.writeHead(302, { Location: authUrl });
+  res.writeHead(302, {
+    Location:
+      `https://github.com/login/oauth/authorize` +
+      `?client_id=${clientId}` +
+      `&scope=repo,user` +
+      `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`,
+  });
   res.end();
 }
