@@ -8,31 +8,32 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    #token-screen {
+    #auth-screen {
       display: flex; align-items: center; justify-content: center;
       min-height: 100vh; background: #f5f5f5;
     }
-    #token-screen .card {
+    #auth-screen .card {
       background: white; padding: 2rem; border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 420px; width: 100%;
     }
-    #token-screen h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
-    #token-screen p { color: #666; font-size: 0.875rem; margin-bottom: 1rem; }
-    #token-screen input {
+    #auth-screen h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    #auth-screen p { color: #666; font-size: 0.875rem; margin-bottom: 1rem; }
+    #auth-screen input {
       width: 100%; padding: 0.625rem; border: 1px solid #d4d4d4;
       border-radius: 4px; font-size: 0.9375rem; margin-bottom: 0.75rem;
     }
-    #token-screen input:focus { outline: none; border-color: #2563eb; }
-    #token-screen button {
+    #auth-screen input:focus { outline: none; border-color: #2563eb; }
+    #auth-screen button {
       width: 100%; padding: 0.625rem; background: #2563eb;
       color: white; border: none; border-radius: 4px; font-size: 0.9375rem; cursor: pointer;
     }
-    #token-screen button:hover { background: #1d4ed8; }
+    #auth-screen button:hover { background: #1d4ed8; }
     .error-msg { color: #dc2626; font-size: 0.8125rem; margin-bottom: 0.5rem; display: none; }
+    .loading-msg { color: #2563eb; font-size: 0.875rem; margin-bottom: 0.5rem; display: none; }
   </style>
 </head>
 <body>
-  <div id="token-screen">
+  <div id="auth-screen">
     <div class="card">
       <h1>博客后台</h1>
       <p>请输入 Gitee Personal Access Token 以继续。</p>
@@ -40,6 +41,7 @@
         在 <a href="https://gitee.com/profile/personal_access_tokens" target="_blank" rel="noopener">gitee.com</a> 创建令牌，勾选 user 和 projects 权限。
       </p>
       <div class="error-msg" id="error-msg"></div>
+      <div class="loading-msg" id="loading-msg">正在验证令牌...</div>
       <input type="password" id="token-input" placeholder="粘贴 Gitee Token..." autocomplete="off" />
       <button id="save-token">进入后台</button>
     </div>
@@ -48,101 +50,116 @@
   <script>window.CMS_MANUAL_INIT = true</script>
   <script src="https://unpkg.com/decap-cms@3.11.0/dist/decap-cms.js"></script>
   <script>
-    const TOKEN_KEY = 'gitee-cms-token';
-    const API_URL = '/api';
+    (function() {
+      var TOKEN_KEY = 'gitee-cms-token';
+      var API_URL = '/api';
 
-    function showError(msg) {
-      const el = document.getElementById('error-msg');
-      el.textContent = msg;
-      el.style.display = 'block';
-    }
+      var _origFetch = window.fetch;
 
-    function hideTokenScreen() {
-      document.getElementById('token-screen').style.display = 'none';
-    }
-
-    async function verifyAndSaveToken(token) {
-      try {
-        const res = await fetch(API_URL + '/entries?branch=master&path=src/content/blog', {
-          headers: { 'Authorization': 'Bearer ' + token }
-        });
-        if (res.ok) {
-          localStorage.setItem(TOKEN_KEY, token);
-          hideTokenScreen();
-          initCMS(token);
-        } else if (res.status === 401) {
-          showError('令牌无效，请检查后重试。');
-        } else {
-          showError('API 连接失败（状态码: ' + res.status + '），请确认 Functions 已部署。');
-        }
-      } catch (e) {
-        showError('网络错误: ' + e.message);
-      }
-    }
-
-    document.getElementById('save-token').addEventListener('click', () => {
-      const token = document.getElementById('token-input').value.trim();
-      if (!token) { showError('请输入令牌。'); return; }
-      verifyAndSaveToken(token);
-    });
-
-    document.getElementById('token-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') document.getElementById('save-token').click();
-    });
-
-    const savedToken = localStorage.getItem(TOKEN_KEY);
-    if (savedToken) {
-      verifyAndSaveToken(savedToken);
-    }
-
-    function initCMS(token) {
-      CMS.init({
-        config: {
-          backend: {
-            name: 'git-gateway',
-            branch: 'master',
-            repo: 'wayway11/my-blog',
-            api_root: API_URL,
-          },
-          media_folder: 'public/images',
-          public_folder: '/images',
-          locale: 'zh_Hans',
-          collections: [{
-            name: 'blog',
-            label: '博客文章',
-            folder: 'src/content/blog',
-            create: true,
-            slug: '{{year}}-{{month}}-{{day}}-{{slug}}',
-            format: 'yaml-frontmatter',
-            fields: [
-              { name: 'title', label: '标题', widget: 'string' },
-              { name: 'date', label: '日期', widget: 'datetime', date_format: 'YYYY-MM-DD', time_format: false, format: 'YYYY-MM-DD' },
-              { name: 'tags', label: '标签', widget: 'list', default: [] },
-              { name: 'summary', label: '摘要', widget: 'string', required: false },
-              { name: 'draft', label: '草稿', widget: 'boolean', default: false },
-              { name: 'body', label: '正文', widget: 'markdown' }
-            ]
-          }]
-        }
-      });
-    }
-
-    // git-gateway custom fetch: attach token on every API call
-    const _origFetch = window.fetch;
-    window.fetch = function(url, options = {}) {
-      if (typeof url === 'string' && url.includes('/api/')) {
-        const token = localStorage.getItem(TOKEN_KEY);
-        if (token) {
-          options.headers = options.headers || {};
-          if (options.headers instanceof Headers) {
-            options.headers.set('Authorization', 'Bearer ' + token);
-          } else {
-            options.headers['Authorization'] = 'Bearer ' + token;
+      // intercept fetch early — inject token into all /api/ requests
+      window.fetch = function(url, options) {
+        options = options || {};
+        if (typeof url === 'string' && url.indexOf('/api/') !== -1) {
+          var token = localStorage.getItem(TOKEN_KEY);
+          if (token) {
+            if (options.headers instanceof Headers) {
+              options.headers.set('Authorization', 'Bearer ' + token);
+            } else {
+              options.headers = options.headers || {};
+              options.headers['Authorization'] = 'Bearer ' + token;
+            }
           }
         }
+        return _origFetch.call(window, url, options);
+      };
+
+      function showError(msg) {
+        document.getElementById('error-msg').textContent = msg;
+        document.getElementById('error-msg').style.display = 'block';
+        document.getElementById('loading-msg').style.display = 'none';
       }
-      return _origFetch.call(window, url, options);
-    };
+
+      function showLoading() {
+        document.getElementById('loading-msg').style.display = 'block';
+        document.getElementById('error-msg').style.display = 'none';
+      }
+
+      function removeAuthScreen() {
+        var el = document.getElementById('auth-screen');
+        if (el && el.parentNode) {
+          el.parentNode.removeChild(el);
+        }
+      }
+
+      function initCMS() {
+        CMS.init({
+          config: {
+            backend: {
+              name: 'git-gateway',
+              branch: 'master',
+              repo: 'wayway11/my-blog',
+              api_root: API_URL,
+            },
+            media_folder: 'public/images',
+            public_folder: '/images',
+            locale: 'zh_Hans',
+            collections: [{
+              name: 'blog',
+              label: '博客文章',
+              folder: 'src/content/blog',
+              create: true,
+              slug: '{{year}}-{{month}}-{{day}}-{{slug}}',
+              format: 'yaml-frontmatter',
+              fields: [
+                { name: 'title', label: '标题', widget: 'string' },
+                { name: 'date', label: '日期', widget: 'datetime', date_format: 'YYYY-MM-DD', time_format: false, format: 'YYYY-MM-DD' },
+                { name: 'tags', label: '标签', widget: 'list', default: [] },
+                { name: 'summary', label: '摘要', widget: 'string', required: false },
+                { name: 'draft', label: '草稿', widget: 'boolean', default: false },
+                { name: 'body', label: '正文', widget: 'markdown' }
+              ]
+            }]
+          }
+        });
+      }
+
+      async function verifyAndEnter(token) {
+        showLoading();
+        try {
+          var res = await window.fetch(API_URL + '/entries?branch=master&path=src/content/blog', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (res.ok) {
+            localStorage.setItem(TOKEN_KEY, token);
+            removeAuthScreen();
+            // let DOM settle before CMS takes over
+            setTimeout(initCMS, 50);
+          } else if (res.status === 401) {
+            showError('令牌无效，请检查后重试。');
+          } else {
+            showError('API 连接失败（状态码: ' + res.status + '），请确认 Functions 已部署。');
+          }
+        } catch (e) {
+          showError('网络错误: ' + e.message);
+        }
+      }
+
+      document.getElementById('save-token').addEventListener('click', function() {
+        var token = document.getElementById('token-input').value.trim();
+        if (!token) { showError('请输入令牌。'); return; }
+        verifyAndEnter(token);
+      });
+
+      document.getElementById('token-input').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') document.getElementById('save-token').click();
+      });
+
+      var savedToken = localStorage.getItem(TOKEN_KEY);
+      if (savedToken) {
+        document.getElementById('token-input').value = savedToken;
+        verifyAndEnter(savedToken);
+      }
+    })();
   </script>
 </body>
 </html>
