@@ -5,9 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex" />
   <title>博客后台</title>
-  <link rel="cms-config" href="/admin/config.yml" />
 </head>
 <body>
   <script src="https://unpkg.com/decap-cms@3.11.0/dist/decap-cms.js"></script>
+  <script>
+    CMS.init({
+      config: {
+        backend: {
+          name: "github",
+          repo: "wayway11/my-blog",
+          branch: "master",
+          base_url: "https://my-blog-steel-ten.vercel.app",
+          auth_endpoint: "api/auth",
+          client_id: "Ov23lizyw0fG0bVo1j04"
+        },
+        media_folder: "public/images",
+        public_folder: "/images",
+        locale: "zh_Hans",
+        collections: [{
+          name: "blog",
+          label: "博客文章",
+          folder: "src/content/blog",
+          create: true,
+          slug: "{{year}}-{{month}}-{{day}}-{{slug}}",
+          format: "yaml-frontmatter",
+          fields: [
+            { label: "标题", name: "title", widget: "string" },
+            { label: "日期", name: "date", widget: "datetime", date_format: "YYYY-MM-DD", time_format: false, format: "YYYY-MM-DD" },
+            { label: "标签", name: "tags", widget: "list", default: [] },
+            { label: "摘要", name: "summary", widget: "string", required: false },
+            { label: "草稿", name: "draft", widget: "boolean", default: false },
+            { label: "正文", name: "body", widget: "markdown" }
+          ]
+        }]
+      }
+    });
+  </script>
 </body>
 </html>
