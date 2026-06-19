@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getToken, verifyToken, giteeHeaders, listEntries, getEntry } from '../functions/api/index.js';
+import { getToken, verifyToken, giteeHeaders, listEntries, getEntry, buildFileContent } from '../functions/api/index.js';
 
 // ── Task 1: Token ──
 
@@ -116,4 +116,39 @@ test('parseEntry handles file without frontmatter', () => {
 
   assert.equal(bodyResult, content);
   assert.deepEqual(fmResult, {});
+});
+
+// ── Task 4: Create/update entry ──
+
+test('buildFileContent generates Markdown with all frontmatter fields', () => {
+  const result = buildFileContent({
+    title: 'Test Post',
+    date: '2026-06-19',
+    tags: ['AI', 'Dev'],
+    summary: 'A test',
+    draft: false,
+    body: '## Hello World\n\nThis is a post.',
+  });
+
+  assert.ok(result.startsWith('---\n'));
+  assert.ok(result.includes('title: Test Post'));
+  assert.ok(result.includes('date: 2026-06-19'));
+  assert.ok(result.includes('tags:'));
+  assert.ok(result.includes('  - AI'));
+  assert.ok(result.includes('  - Dev'));
+  assert.ok(result.includes('summary: A test'));
+  assert.ok(result.includes('## Hello World'));
+  assert.ok(!result.includes('draft: true'));
+});
+
+test('buildFileContent includes draft: true when draft is set', () => {
+  const result = buildFileContent({ title: 'Draft', draft: true, body: 'secret' });
+  assert.ok(result.includes('draft: true'));
+});
+
+test('buildFileContent handles minimal data (title only)', () => {
+  const result = buildFileContent({ title: 'Simple' });
+  assert.ok(result.startsWith('---\n'));
+  assert.ok(result.includes('title: Simple'));
+  assert.ok(result.endsWith('\n'));
 });

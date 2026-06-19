@@ -74,6 +74,46 @@ export async function getEntry(token, path, branch = DEFAULT_BRANCH) {
   return { name: file.name, path: file.path, sha: file.sha, raw, body, frontmatter };
 }
 
+export function buildFileContent(data) {
+  const lines = ['---'];
+  lines.push(`title: ${data.title}`);
+  if (data.date) lines.push(`date: ${data.date}`);
+  if (Array.isArray(data.tags) && data.tags.length > 0) {
+    lines.push('tags:');
+    data.tags.forEach(t => lines.push(`  - ${t}`));
+  }
+  if (data.summary) lines.push(`summary: ${data.summary}`);
+  if (data.draft) lines.push('draft: true');
+  lines.push('---');
+  lines.push('');
+  lines.push(data.body || '');
+  return lines.join('\n');
+}
+
+export async function saveEntry(token, path, content, sha, message, branch = DEFAULT_BRANCH) {
+  const body = {
+    access_token: token,
+    content: Buffer.from(content).toString('base64'),
+    message: message,
+    branch: branch,
+  };
+  if (sha) body.sha = sha;
+
+  const url = `${GITEE_API_BASE}/repos/${OWNER}/${REPO}/contents/${encodeURIComponent(path)}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: giteeHeaders(token),
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Gitee API error: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 export default {
   async fetch(request) {
     const token = getToken(request);
@@ -103,6 +143,26 @@ export default {
         return new Response(JSON.stringify({ error: err.message }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // POST /api/entries
+    if (method === 'POST' && url.pathname.endsWith('/entries')) {
+      try {
+        const body = await request.json();
+        const filePath = body.path;
+        const fileContent = buildFileContent(body);
+        const message = body.sha
+          ? `Update post: ${body.slug || filePath}`
+          : `Create post: ${body.slug || filePath}`;
+        const result = await saveEntry(token, filePath, fileContent, body.sha, message, branch);
+        return new Response(JSON.stringify(result), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message }), {
+          status: 500, headers: { 'Content-Type': 'application/json' }
         });
       }
     }
