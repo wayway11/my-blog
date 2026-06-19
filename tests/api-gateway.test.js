@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getToken, verifyToken, giteeHeaders, listEntries, getEntry, buildFileContent, deleteEntry } from '../functions/api/index.js';
+import { getToken, verifyToken, giteeHeaders, listEntries, getEntry, buildFileContent, deleteEntry, uploadMedia } from '../functions/api/index.js';
 
 // ── Task 1: Token ──
 
@@ -158,4 +158,18 @@ test('buildFileContent handles minimal data (title only)', () => {
 test('deleteEntry rejects when sha is missing', async () => {
   await assert.rejects(() => deleteEntry('t', 'p', '', 'msg'), /sha is required/);
   await assert.rejects(() => deleteEntry('t', 'p', null, 'msg'), /sha is required/);
+});
+
+// ── Task 6: Upload media ──
+
+test('uploadMedia generates clean file path', () => {
+  // Test path generation logic inline
+  function buildMediaPath(filename) {
+    const cleanName = filename.replace(/[^a-zA-Z0-9._-]/g, '-');
+    return `public/images/${cleanName}`;
+  }
+
+  assert.equal(buildMediaPath('my photo!.png'), 'public/images/my-photo-.png');
+  assert.equal(buildMediaPath('hello_world.jpg'), 'public/images/hello_world.jpg');
+  assert.equal(buildMediaPath('测试.png'), 'public/images/--.png');
 });

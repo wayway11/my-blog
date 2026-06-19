@@ -137,6 +137,48 @@ export async function deleteEntry(token, path, sha, message, branch = DEFAULT_BR
   return res.json();
 }
 
+export async function uploadMedia(token, filename, contentBase64, branch = DEFAULT_BRANCH) {
+  const cleanName = filename.replace(/[^a-zA-Z0-9._-]/g, '-');
+  const path = `public/images/${cleanName}`;
+
+  let sha = null;
+  try {
+    const checkUrl = `${GITEE_API_BASE}/repos/${OWNER}/${REPO}/contents/${encodeURIComponent(path)}?access_token=${token}&ref=${branch}`;
+    const checkRes = await fetch(checkUrl, { headers: giteeHeaders(token) });
+    if (checkRes.ok) {
+      const existing = await checkRes.json();
+      sha = existing.sha;
+    }
+  } catch (_) { /* 文件不存在，正常创建 */ }
+
+  const body = {
+    access_token: token,
+    content: contentBase64,
+    message: `Upload media: ${cleanName}`,
+    branch: branch,
+  };
+  if (sha) body.sha = sha;
+
+  const url = `${GITEE_API_BASE}/repos/${OWNER}/${REPO}/contents/${encodeURIComponent(path)}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: giteeHeaders(token),
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Gitee API error: ${res.status}`);
+  }
+
+  const result = await res.json();
+  return {
+    url: `/images/${cleanName}`,
+    path: path,
+    sha: result.content?.sha || result.sha,
+  };
+}
+
 export default {
   async fetch(request) {
     const token = getToken(request);
@@ -201,6 +243,29 @@ export default {
         }
         const msg = `Delete post: ${body.path}`;
         const result = await deleteEntry(token, body.path, body.sha, msg, branch);
+        return new Response(JSON.stringify(result), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message }), {
+          status: 500, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // POST /api/media
+    if (method === 'POST' && url.pathname.endsWith('/media')) {
+      try {
+        const formData = await request.formData();
+        const file = formData.get('file');
+        if (!file) {
+          return new Response(JSON.stringify({ error: 'file is required' }), {
+            status: 400, headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        const arrayBuffer = await file.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString('base64');
+        const result = await uploadMedia(token, file.name, base64, branch);
         return new Response(JSON.stringify(result), {
           headers: { 'Content-Type': 'application/json' }
         });
