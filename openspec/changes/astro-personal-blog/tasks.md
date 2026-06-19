@@ -912,7 +912,7 @@
   git push -u origin main
   ```
 
-- [ ] 9.5 连接 Vercel 自动部署
+- [x] 9.5 连接 Vercel 自动部署
   1. 打开 [vercel.com](https://vercel.com)，用 GitHub 登录
   2. 点击 "New Project" → 导入刚创建的 GitHub 仓库
   3. Vercel 自动检测到 Astro 项目，无需修改配置
@@ -922,11 +922,11 @@
 
 ## 10. 收尾
 
-- [ ] 10.1 替换示例文章为你的第一篇正式文章
+- [x] 10.1 替换示例文章为你的第一篇正式文章
   删除 `src/content/blog/2024-06-18-hello-world.md` 和 `src/content/blog/2024-06-20-draft-post.md`
   创建你的第一篇正式文章，写真实内容
 
-- [ ] 10.2 最终全面检查
+- [x] 10.2 最终全面检查
   运行: `npm run build`
   确认构建无错误，`dist/` 输出完整
   运行: `npm run dev`
