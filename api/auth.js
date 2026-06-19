@@ -1,3 +1,5 @@
+const REDIRECT_URI = 'https://my-blog-steel-ten.vercel.app/api/auth';
+
 export default async function handler(req, res) {
   const url = new URL(req.url, `https://${req.headers.host}`);
   const code = url.searchParams.get('code');
@@ -16,6 +18,7 @@ export default async function handler(req, res) {
             client_id: process.env.OAUTH_CLIENT_ID,
             client_secret: process.env.OAUTH_CLIENT_SECRET,
             code,
+            redirect_uri: REDIRECT_URI,
           }),
         }
       );
@@ -51,13 +54,12 @@ export default async function handler(req, res) {
     return;
   }
 
-  const redirectUri = `https://${req.headers.host}/api/auth`;
   const clientId = process.env.OAUTH_CLIENT_ID;
   const authUrl =
     `https://github.com/login/oauth/authorize` +
     `?client_id=${clientId}` +
     `&scope=repo,user` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
 
   res.writeHead(302, { Location: authUrl });
   res.end();
