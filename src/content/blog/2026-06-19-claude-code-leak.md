@@ -1,8 +1,11 @@
 ---
-title: "Claude Code 源码泄露的启发"
+title: Claude Code 源码泄露的启发
 date: 2026-06-19
-tags: ["AI", "Claude Code"]
-summary: "关于 Claude Code 源码泄露事件的一些思考"
+tags:
+  - AI
+  - Claude Code
+summary: 关于 Claude Code 源码泄露事件的一些思考
+draft: true
 ---
 
 最近 Claude Code 的源码在网络上被泄露，作为一个一直在用 Claude Code 写代码的人，看完之后有几点想法。
@@ -14,7 +17,7 @@ summary: "关于 Claude Code 源码泄露事件的一些思考"
 Claude Code 里面那套 sub-agent 调度系统就是一个很好的例子。把一个大任务拆成小步骤，每个步骤交给一个独立的 agent 去执行，执行完再汇总 — 这种设计比"一个超大 prompt 一把梭"稳定得多。
 
 ## 工程细节决定体验
-
+f
 源码里能看到很多对体验影响巨大的设计决策：
 
 - **上下文窗口的利用策略** — 不是无脑塞满，而是做分层摘要和选择性遗忘，保证关键信息不丢失
