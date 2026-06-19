@@ -1,0 +1,48 @@
+backend:
+  name: github
+  repo: wayway11/my-blog
+  branch: master
+  base_url: https://my-blog-steel-ten.vercel.app
+  auth_endpoint: api/auth
+  client_id: Ov23lizyw0fG0bVo1j04
+
+media_folder: public/images
+public_folder: /images
+
+collections:
+  - name: blog
+    label: 博客文章
+    folder: src/content/blog
+    create: true
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
+    format: yml-frontmatter
+    fields:
+      - label: 标题
+        name: title
+        widget: string
+      - label: 日期
+        name: date
+        widget: datetime
+        date_format: true
+        time_format: false
+      - label: 标签
+        name: tags
+        widget: list
+        default: []
+      - label: 摘要
+        name: summary
+        widget: string
+        required: false
+      - label: 草稿
+        name: draft
+        widget: boolean
+        default: false
+      - label: 正文
+        name: body
+        widget: markdown
+
+locale: zh_Hans
+
+slug:
+  encoding: ascii
+  clean_accents: true
