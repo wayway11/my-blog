@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getToken, verifyToken, giteeHeaders, listEntries, getEntry, buildFileContent } from '../functions/api/index.js';
+import { getToken, verifyToken, giteeHeaders, listEntries, getEntry, buildFileContent, deleteEntry } from '../functions/api/index.js';
 
 // ── Task 1: Token ──
 
@@ -151,4 +151,11 @@ test('buildFileContent handles minimal data (title only)', () => {
   assert.ok(result.startsWith('---\n'));
   assert.ok(result.includes('title: Simple'));
   assert.ok(result.endsWith('\n'));
+});
+
+// ── Task 5: Delete entry ──
+
+test('deleteEntry rejects when sha is missing', async () => {
+  await assert.rejects(() => deleteEntry('t', 'p', '', 'msg'), /sha is required/);
+  await assert.rejects(() => deleteEntry('t', 'p', null, 'msg'), /sha is required/);
 });

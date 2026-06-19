@@ -114,6 +114,29 @@ export async function saveEntry(token, path, content, sha, message, branch = DEF
   return res.json();
 }
 
+export async function deleteEntry(token, path, sha, message, branch = DEFAULT_BRANCH) {
+  if (!sha) throw new Error('sha is required for delete');
+
+  const url = `${GITEE_API_BASE}/repos/${OWNER}/${REPO}/contents/${encodeURIComponent(path)}?access_token=${token}`;
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: giteeHeaders(token),
+    body: JSON.stringify({
+      access_token: token,
+      message: message,
+      sha: sha,
+      branch: branch,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Gitee API error: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 export default {
   async fetch(request) {
     const token = getToken(request);
@@ -157,6 +180,27 @@ export default {
           ? `Update post: ${body.slug || filePath}`
           : `Create post: ${body.slug || filePath}`;
         const result = await saveEntry(token, filePath, fileContent, body.sha, message, branch);
+        return new Response(JSON.stringify(result), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message }), {
+          status: 500, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // DELETE /api/entries
+    if (method === 'DELETE' && url.pathname.endsWith('/entries')) {
+      try {
+        const body = await request.json();
+        if (!body.sha) {
+          return new Response(JSON.stringify({ error: 'sha is required' }), {
+            status: 400, headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        const msg = `Delete post: ${body.path}`;
+        const result = await deleteEntry(token, body.path, body.sha, msg, branch);
         return new Response(JSON.stringify(result), {
           headers: { 'Content-Type': 'application/json' }
         });
