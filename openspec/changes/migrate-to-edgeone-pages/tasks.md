@@ -10,7 +10,7 @@
 
 **前置条件:**
 - 腾讯云账号（需实名认证）
-- GitHub 仓库已包含完整博客代码
+- Gitee（码云）账号，已创建仓库并推送代码
 - （可选）已注册的域名，用于自定义域名绑定
 
 ---
@@ -162,30 +162,57 @@ git commit -m "chore: verify static build output works locally"
 
 ---
 
-### Task 5: EdgeOne Pages 创建项目并连接 GitHub
+### Task 5: 迁移代码仓库到 Gitee 并连接 EdgeOne Pages
 
-**Files:** 无（平台控制台操作）
+**Files:** 无（平台控制台操作 + git 操作）
 
-- [ ] **Step 1: 开通 EdgeOne Pages 服务**
+- [ ] **Step 1: 在 Gitee 创建仓库**
+
+1. 浏览器打开 [https://gitee.com](https://gitee.com)
+2. 登录 Gitee 账号
+3. 点击右上角「+」→「新建仓库」
+4. 填写仓库名称（如 `my-blog`），设置为私有或公开
+5. 不要勾选「使用 README 初始化」（避免冲突）
+6. 点击「创建」，记录仓库地址
+
+- [ ] **Step 2: 添加 Gitee remote 并推送代码**
+
+```bash
+git remote add gitee https://gitee.com/<你的用户名>/my-blog.git
+git push -u gitee master
+```
+
+Expected: 代码成功推送到 Gitee，推送速度明显快于 GitHub。
+
+- [ ] **Step 3: 提交 .gitignore（如有新增文件）**
+
+```bash
+git add -A
+git commit -m "chore: add Gitee remote configuration"
+git push gitee master
+```
+
+- [ ] **Step 4: 开通 EdgeOne Pages 服务**
 
 1. 浏览器打开 [https://console.cloud.tencent.com/edgeone/pages](https://console.cloud.tencent.com/edgeone/pages)
 2. 使用腾讯云账号登录（如无账号先注册并完成实名认证）
 3. 首次进入可能需要开通服务，点击「立即开通」
 
-- [ ] **Step 2: 创建新项目**
+- [ ] **Step 5: 创建新项目并连接 Gitee**
 
 1. 点击「创建项目」或「新建项目」
 2. 选择「从 Git 仓库导入」
-3. 授权 EdgeOne Pages 访问 GitHub 账号
-4. 在仓库列表中选择当前博客仓库
-5. 确认框架被自动检测为 **Astro**（如未检测到，手动选择）
-6. 确认构建配置：
+3. 在平台选择中选择 **Gitee**（码云）
+4. 授权 EdgeOne Pages 访问 Gitee 账号
+5. 在仓库列表中选择刚才创建的博客仓库
+6. 确认框架被自动检测为 **Astro**（如未检测到，手动选择）
+7. 确认构建配置：
    - **构建命令**: `npm run build`
    - **输出目录**: `dist/`
    - **Node.js 版本**: 默认（或选 18+）
-7. 点击「部署」
+8. 点击「部署」
 
-- [ ] **Step 3: 等待首次构建完成**
+- [ ] **Step 6: 等待首次构建完成**
 
 构建通常 1-3 分钟。在控制台「部署日志」中观察进度。如构建失败，检查日志中的错误信息：
 
@@ -194,7 +221,7 @@ git commit -m "chore: verify static build output works locally"
 - 依赖安装失败 → 确认 `package.json` 中的包版本正确
 - 构建命令错误 → 确认命令为 `npm run build`
 
-- [ ] **Step 4: 获取默认域名**
+- [ ] **Step 7: 获取默认域名**
 
 构建成功后，EdgeOne Pages 会分配一个默认域名，格式类似：
 ```
@@ -202,7 +229,7 @@ git commit -m "chore: verify static build output works locally"
 ```
 记录这个域名，后续步骤使用。
 
-- [ ] **Step 5: 访问默认域名验证部署**
+- [ ] **Step 8: 访问默认域名验证部署**
 
 在浏览器中打开默认域名，重复 Task 4 Step 3 的检查列表：
 - `/` — 首页文章列表
@@ -234,7 +261,7 @@ git commit -m "chore: verify static build output works locally"
 ```bash
 git add src/content/blog/
 git commit -m "test: verify EdgeOne Pages auto-deploy"
-git push origin master
+git push gitee master
 ```
 
 - [ ] **Step 3: 确认 EdgeOne Pages 自动触发构建**
@@ -249,7 +276,7 @@ git push origin master
 # 编辑文章，删除刚才添加的测试行
 git add src/content/blog/
 git commit -m "chore: revert test change"
-git push origin master
+git push gitee master
 ```
 
 确认 EdgeOne Pages 再次自动部署，文章恢复原样。
@@ -360,7 +387,7 @@ Expected: 返回结果中包含 EdgeOne Pages 相关的 CNAME 记录。
 ```markdown
 ## 部署
 
-本博客使用 [EdgeOne Pages](https://edgeone.ai/products/pages) 部署，git push 到 master 分支后自动构建发布。
+本博客使用 [EdgeOne Pages](https://edgeone.ai/products/pages) 部署，git push 到 Gitee master 分支后自动构建发布。
 
 - 构建命令: `npm run build`
 - 输出目录: `dist/`
@@ -372,5 +399,5 @@ Expected: 返回结果中包含 EdgeOne Pages 相关的 CNAME 记录。
 ```bash
 git add README.md
 git commit -m "docs: update README with EdgeOne Pages deployment info"
-git push origin master
+git push gitee master
 ```
