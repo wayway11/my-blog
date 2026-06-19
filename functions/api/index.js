@@ -27,6 +27,25 @@ export function giteeHeaders(token) {
   };
 }
 
+export async function listEntries(token, path, branch = DEFAULT_BRANCH) {
+  const url = `${GITEE_API_BASE}/repos/${OWNER}/${REPO}/contents/${encodeURIComponent(path)}?access_token=${token}&ref=${branch}`;
+  const res = await fetch(url, { headers: giteeHeaders(token) });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Gitee API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  return (Array.isArray(data) ? data : [data])
+    .filter(f => f.type === 'file' && f.name.endsWith('.md'))
+    .map(f => ({
+      name: f.name,
+      path: f.path,
+      slug: f.name.replace('.md', ''),
+    }));
+}
+
 export default {
   async fetch(request) {
     const token = getToken(request);
@@ -38,6 +57,26 @@ export default {
         JSON.stringify({ error: 'Invalid token — Gitee 令牌无效或已过期' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
+    }
+
+    const url = new URL(request.url);
+    const method = request.method;
+    const path = url.searchParams.get('path') || '';
+    const branch = url.searchParams.get('branch') || DEFAULT_BRANCH;
+
+    // GET /api/entries
+    if (method === 'GET' && url.pathname.endsWith('/entries')) {
+      try {
+        const entries = await listEntries(token, path, branch);
+        return new Response(JSON.stringify(entries), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
     }
 
     return new Response(JSON.stringify({ message: 'API gateway ready' }), {
