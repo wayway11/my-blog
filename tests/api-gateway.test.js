@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getToken, verifyToken, giteeHeaders, listEntries, getEntry, buildFileContent, deleteEntry, uploadMedia } from '../functions/api/index.js';
+import { getToken, verifyToken, giteeHeaders, listEntries, getEntry, buildFileContent, deleteEntry, uploadMedia } from '../lib/gitee-gateway.js';
 
 // ── Task 1: Token ──
 
