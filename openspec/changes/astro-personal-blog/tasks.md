@@ -900,7 +900,7 @@
   - `/archive/` — 归档
   - `/non-existent` — 404
 
-- [ ] 9.4 初始化 Git 并推送到 GitHub
+- [x] 9.4 初始化 Git 并推送到 GitHub
   ```bash
   git init
   git add -A
