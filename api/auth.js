@@ -26,25 +26,41 @@ export default async function handler(req, res) {
 
       if (data.error) {
         res.writeHead(400, { 'Content-Type': 'text/html' });
-        return res.end(`<p>OAuth error: ${data.error_description || data.error}</p>`);
+        return res.end(
+          `<html><body style="font-family:sans-serif;padding:40px;text-align:center">
+            <h2>登录失败</h2>
+            <p>${data.error_description || data.error}</p>
+            <p>请关闭此窗口重试。</p>
+          </body></html>`
+        );
       }
-
-      const content = JSON.stringify({
-        token: data.access_token,
-        provider: 'github',
-      });
 
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(`
 <!DOCTYPE html>
-<html><body>
-<script>
-  window.opener.postMessage(
-    'authorization:github:success:${content.replace(/'/g, "\\'")}',
-    '*'
-  );
-  window.opener.postMessage(${content}, '*');
-</script>
+<html>
+<head><meta charset="utf-8"><title>登录成功</title></head>
+<body style="font-family:sans-serif;padding:40px;text-align:center">
+  <p>登录成功 ✅</p>
+  <p>此窗口即将关闭...</p>
+  <script>
+    (function() {
+      var data = { token: ${JSON.stringify(data.access_token)}, provider: 'github' };
+      // Send token to parent Decap CMS window
+      window.opener.postMessage(data, '*');
+      // Also try the structured format for compatibility
+      window.opener.postMessage(
+        'authorization:github:success:' + JSON.stringify(data),
+        '*'
+      );
+      // Close popup after short delay
+      setTimeout(function() { window.close(); }, 1000);
+      // If not a popup, redirect to admin
+      setTimeout(function() {
+        document.body.innerHTML = '<p>登录成功！<a href="/admin/">进入后台</a></p>';
+      }, 1500);
+    })();
+  </script>
 </body></html>
       `);
     } catch (err) {
@@ -55,6 +71,11 @@ export default async function handler(req, res) {
   }
 
   const clientId = process.env.OAUTH_CLIENT_ID;
+  if (!clientId) {
+    res.writeHead(500, { 'Content-Type': 'text/plain' });
+    return res.end('OAUTH_CLIENT_ID not set in environment variables');
+  }
+
   const authUrl =
     `https://github.com/login/oauth/authorize` +
     `?client_id=${clientId}` +
