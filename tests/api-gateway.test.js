@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getToken, verifyToken, giteeHeaders, listEntries } from '../functions/api/index.js';
+import { getToken, verifyToken, giteeHeaders, listEntries, getEntry } from '../functions/api/index.js';
 
 // ── Task 1: Token ──
 
@@ -61,4 +61,59 @@ test('listEntries returns empty array for empty or non-md directory', () => {
 
   assert.deepEqual(filterAndMap([]), []);
   assert.deepEqual(filterAndMap([{ name: 'img.png', path: 'img.png', type: 'file' }]), []);
+});
+
+// ── Task 3: Read entry ──
+
+test('parseEntry decodes Gitee base64 content and extracts frontmatter', () => {
+  const yaml = `title: Hello World
+date: 2026-06-19
+tags:
+  - AI
+summary: A test post
+draft: false
+`;
+  const body = `## Hello
+
+This is the content.`;
+  const fullContent = `---\n${yaml}---\n${body}`;
+  const base64Content = Buffer.from(fullContent).toString('base64');
+
+  const raw = Buffer.from(base64Content, 'base64').toString('utf-8');
+  const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+
+  const [, frontmatterStr, bodyStr] = match;
+  const frontmatter = {};
+  frontmatterStr.split('\n').forEach(line => {
+    const m = line.match(/^(\w+):\s*(.*)/);
+    if (m) frontmatter[m[1]] = m[2].trim();
+  });
+
+  assert.equal(frontmatter.title, 'Hello World');
+  assert.equal(frontmatter.date, '2026-06-19');
+  assert.ok(bodyStr.trim().includes('This is the content'));
+});
+
+test('parseEntry handles file without frontmatter', () => {
+  const content = 'Just some markdown without frontmatter';
+  const base64Content = Buffer.from(content).toString('base64');
+
+  const raw = Buffer.from(base64Content, 'base64').toString('utf-8');
+  const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  let bodyResult, fmResult;
+  if (!match) {
+    bodyResult = raw;
+    fmResult = {};
+  } else {
+    const [, fmStr, bodyStr] = match;
+    fmResult = {};
+    fmStr.split('\n').forEach(line => {
+      const m = line.match(/^(\w+):\s*(.*)/);
+      if (m) fmResult[m[1]] = m[2].trim();
+    });
+    bodyResult = bodyStr.trim();
+  }
+
+  assert.equal(bodyResult, content);
+  assert.deepEqual(fmResult, {});
 });

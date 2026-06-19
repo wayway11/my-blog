@@ -46,6 +46,34 @@ export async function listEntries(token, path, branch = DEFAULT_BRANCH) {
     }));
 }
 
+export async function getEntry(token, path, branch = DEFAULT_BRANCH) {
+  const url = `${GITEE_API_BASE}/repos/${OWNER}/${REPO}/contents/${encodeURIComponent(path)}?access_token=${token}&ref=${branch}`;
+  const res = await fetch(url, { headers: giteeHeaders(token) });
+
+  if (!res.ok) {
+    if (res.status === 404) return null;
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Gitee API error: ${res.status}`);
+  }
+
+  const file = await res.json();
+  const raw = Buffer.from(file.content, 'base64').toString('utf-8');
+  const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  let frontmatter = {};
+  let body = raw;
+
+  if (match) {
+    const [, fmStr, bodyStr] = match;
+    fmStr.split('\n').forEach(line => {
+      const m = line.match(/^(\w+):\s*(.*)/);
+      if (m) frontmatter[m[1]] = m[2].trim();
+    });
+    body = bodyStr.trim();
+  }
+
+  return { name: file.name, path: file.path, sha: file.sha, raw, body, frontmatter };
+}
+
 export default {
   async fetch(request) {
     const token = getToken(request);
@@ -75,6 +103,30 @@ export default {
         return new Response(JSON.stringify({ error: err.message }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // GET /api/entry
+    if (method === 'GET' && url.pathname.endsWith('/entry')) {
+      if (!path) {
+        return new Response(JSON.stringify({ error: 'path is required' }), {
+          status: 400, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      try {
+        const entry = await getEntry(token, path, branch);
+        if (!entry) {
+          return new Response(JSON.stringify({ error: 'Not found' }), {
+            status: 404, headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        return new Response(JSON.stringify(entry), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message }), {
+          status: 500, headers: { 'Content-Type': 'application/json' }
         });
       }
     }
