@@ -10,7 +10,8 @@
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     #auth-screen {
       display: flex; align-items: center; justify-content: center;
-      min-height: 100vh; background: #f5f5f5;
+      min-height: 100vh; background: #f5f5f5; position: fixed; top: 0; left: 0;
+      width: 100%; z-index: 9999;
     }
     #auth-screen .card {
       background: white; padding: 2rem; border-radius: 8px;
@@ -28,8 +29,8 @@
       color: white; border: none; border-radius: 4px; font-size: 0.9375rem; cursor: pointer;
     }
     #auth-screen button:hover { background: #1d4ed8; }
+    #auth-screen button:disabled { background: #93c5fd; cursor: wait; }
     .error-msg { color: #dc2626; font-size: 0.8125rem; margin-bottom: 0.5rem; display: none; }
-    .loading-msg { color: #2563eb; font-size: 0.875rem; margin-bottom: 0.5rem; display: none; }
   </style>
 </head>
 <body>
@@ -41,22 +42,65 @@
         在 <a href="https://gitee.com/profile/personal_access_tokens" target="_blank" rel="noopener">gitee.com</a> 创建令牌，勾选 user 和 projects 权限。
       </p>
       <div class="error-msg" id="error-msg"></div>
-      <div class="loading-msg" id="loading-msg">正在验证令牌...</div>
       <input type="password" id="token-input" placeholder="粘贴 Gitee Token..." autocomplete="off" />
       <button id="save-token">进入后台</button>
     </div>
   </div>
 
-  <script>window.CMS_MANUAL_INIT = true</script>
-  <script src="https://unpkg.com/decap-cms@3.11.0/dist/decap-cms.js"></script>
   <script>
-    (function() {
-      var TOKEN_KEY = 'gitee-cms-token';
-      var API_URL = '/api';
+    var TOKEN_KEY = 'gitee-cms-token';
 
+    // if already have token, just go straight to CMS
+    if (localStorage.getItem(TOKEN_KEY)) {
+      document.getElementById('auth-screen').style.display = 'none';
+      loadCMS();
+    }
+
+    function showError(msg) {
+      var el = document.getElementById('error-msg');
+      el.textContent = msg;
+      el.style.display = 'block';
+      var btn = document.getElementById('save-token');
+      btn.disabled = false;
+      btn.textContent = '进入后台';
+    }
+
+    async function verifyAndEnter(token) {
+      var btn = document.getElementById('save-token');
+      btn.disabled = true;
+      btn.textContent = '验证中...';
+
+      try {
+        var res = await fetch('/api/entries?branch=master&path=src/content/blog', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.ok) {
+          localStorage.setItem(TOKEN_KEY, token);
+          document.getElementById('auth-screen').style.display = 'none';
+          loadCMS();
+        } else if (res.status === 401) {
+          showError('令牌无效，请检查后重试。');
+        } else {
+          showError('API 连接失败（状态码: ' + res.status + '），请确认 Functions 已部署。');
+        }
+      } catch (e) {
+        showError('网络错误: ' + e.message);
+      }
+    }
+
+    document.getElementById('save-token').addEventListener('click', function() {
+      var token = document.getElementById('token-input').value.trim();
+      if (!token) { showError('请输入令牌。'); return; }
+      verifyAndEnter(token);
+    });
+
+    document.getElementById('token-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') document.getElementById('save-token').click();
+    });
+
+    function loadCMS() {
+      // inject fetch override before CMS loads
       var _origFetch = window.fetch;
-
-      // intercept fetch early — inject token into all /api/ requests
       window.fetch = function(url, options) {
         options = options || {};
         if (typeof url === 'string' && url.indexOf('/api/') !== -1) {
@@ -73,32 +117,17 @@
         return _origFetch.call(window, url, options);
       };
 
-      function showError(msg) {
-        document.getElementById('error-msg').textContent = msg;
-        document.getElementById('error-msg').style.display = 'block';
-        document.getElementById('loading-msg').style.display = 'none';
-      }
-
-      function showLoading() {
-        document.getElementById('loading-msg').style.display = 'block';
-        document.getElementById('error-msg').style.display = 'none';
-      }
-
-      function removeAuthScreen() {
-        var el = document.getElementById('auth-screen');
-        if (el && el.parentNode) {
-          el.parentNode.removeChild(el);
-        }
-      }
-
-      function initCMS() {
-        CMS.init({
+      // load CMS dynamically — avoids DOM conflicts
+      var script = document.createElement('script');
+      script.src = 'https://unpkg.com/decap-cms@3.11.0/dist/decap-cms.js';
+      script.onload = function() {
+        window.CMS.init({
           config: {
             backend: {
               name: 'git-gateway',
               branch: 'master',
               repo: 'wayway11/my-blog',
-              api_root: API_URL,
+              api_root: '/api',
             },
             media_folder: 'public/images',
             public_folder: '/images',
@@ -121,45 +150,9 @@
             }]
           }
         });
-      }
-
-      async function verifyAndEnter(token) {
-        showLoading();
-        try {
-          var res = await window.fetch(API_URL + '/entries?branch=master&path=src/content/blog', {
-            headers: { 'Authorization': 'Bearer ' + token }
-          });
-          if (res.ok) {
-            localStorage.setItem(TOKEN_KEY, token);
-            removeAuthScreen();
-            // let DOM settle before CMS takes over
-            setTimeout(initCMS, 50);
-          } else if (res.status === 401) {
-            showError('令牌无效，请检查后重试。');
-          } else {
-            showError('API 连接失败（状态码: ' + res.status + '），请确认 Functions 已部署。');
-          }
-        } catch (e) {
-          showError('网络错误: ' + e.message);
-        }
-      }
-
-      document.getElementById('save-token').addEventListener('click', function() {
-        var token = document.getElementById('token-input').value.trim();
-        if (!token) { showError('请输入令牌。'); return; }
-        verifyAndEnter(token);
-      });
-
-      document.getElementById('token-input').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') document.getElementById('save-token').click();
-      });
-
-      var savedToken = localStorage.getItem(TOKEN_KEY);
-      if (savedToken) {
-        document.getElementById('token-input').value = savedToken;
-        verifyAndEnter(savedToken);
-      }
-    })();
+      };
+      document.head.appendChild(script);
+    }
   </script>
 </body>
 </html>
